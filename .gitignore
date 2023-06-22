@@ -7,4 +7,5 @@ tmp/
 *.egg
 build
 htmlcov
-secrets.txt
+.env
+venv

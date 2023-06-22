@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "tell-me-about-it"
+version = "0.1.0"
+description = ""
+authors = ["Diego Berrocal <3291619+CestDiego@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "tell_me_about_it"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torch = {url = "https://download.pytorch.org/whl/cpu/torch-2.0.1-cp310-none-macosx_11_0_arm64.whl"}
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

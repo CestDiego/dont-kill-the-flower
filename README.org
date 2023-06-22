@@ -1,0 +1,17 @@
+#+title: Tell Me About It
+
+* Objective
+- Output real time sentiment analysis data on microphone input.
+- Hopefully this can be used alongside your webcam to showcase you talking to yourself. If you are saying positive kthings about yourself or putting yourself down.
+* Implementation considerations.
+- There are two main considerations:
+  - There is two ends of the video, the closer it goes to either end, the speed of the video should lower.
+  - Every sorry should be less efficient the more it's being used, not quite exponential, but definitely noticeable.
+  - The strongest the negative emotions, the fastest it's going to be accellerating toward negativity
+  - If you hurt it again after saying sorry, it will work less and less until it doesn't work anymore.
+  - Perhaps this could be the same for all positive words, they shall follow a diminishing return a very slow but sure diminishing
+* Brainstorm for AR application
+What would you like to build?
+Spatial design elments do you want to experiment with:
+
+Not sure if it's a wearable, but, I'd love to do one of those smart mirrors, I've been following the projects for a while now.

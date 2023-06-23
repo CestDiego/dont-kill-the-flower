@@ -45,8 +45,9 @@ document.querySelector('video').onloadedmetadata = function() {
 };
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-  const NEG_MULTIPLIER = 2.5
-  const STEP_TIME = 0.03
+  const NEG_MULTIPLIER = 1.5
+  const STEP_TIME = 1/24
+  let MULTIPLIER = 1
   // const FULL_BLOOM_TIMESTAMP=55
   // const FULL_DEATH_TIMESTAMP=86
   const FULL_BLOOM_TIMESTAMP=16
@@ -61,10 +62,6 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
     videoPlayer.requestFullscreen()
     videoPlayer.controls = false
   }
-  // videoEl.playbackRate = 0.1
-  // videoEl.load()
-  // const videoPlayer = videojs('mainVideo')
-  // videoPlayer.src({type: 'video/webm', src: '/video'})
 
   let last;
   let sentimentData = {
@@ -82,8 +79,8 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
         return frame
       }
       frame = isForward
-        ? Math.min(frame + STEP_TIME, FULL_DEATH_TIMESTAMP)
-        : Math.max(frame - STEP_TIME, FULL_BLOOM_TIMESTAMP);
+        ? Math.min(frame + (STEP_TIME * MULTIPLIER), FULL_DEATH_TIMESTAMP)
+        : Math.max(frame - (STEP_TIME * MULTIPLIER), FULL_BLOOM_TIMESTAMP);
       return frame;
     }
   }
@@ -91,15 +88,7 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
   window.runny = () => {
     const nextFrame = window.getNextFrameFunction();
     const interval = window.setInterval(() => {
-      // currentFakeTime = videoPlayer.currentTime
-      // currentFakeTime = isForward
-      // // ? Math.min(currentFakeTime + STEP_TIME, videoEl.duration)
-      //   ? Math.min(currentFakeTime + STEP_TIME, videoPlayer.duration)
-      //   : Math.max(currentFakeTime - STEP_TIME, 0);
-
-      // videoPlayer.currentTime = currentFakeTime
       videoPlayer.currentTime = nextFrame();
-      // console.log({currentFakeTime, 'current': videoPlayer.currentTime})
     }, 1000/24)
     window.mainInterval = interval
   }
@@ -132,6 +121,9 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
       console.log(sentimentData)
       isForward = sentimentData.score < 0
       // document.querySelector('#transcript').textContent += ' ' + received
+      MULTIPLIER = Math.max(Math.min(
+        Math.log(Math.abs(sentimentData.score) + 4)/Math.log(4), 3), 1) // log(score) in base 4
+      console.log({ MULTIPLIER })
     }
   }
 

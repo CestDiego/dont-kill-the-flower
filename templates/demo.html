@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Live Transcription</title>
+        <link href="https://vjs.zencdn.net/8.3.0/video-js.css" rel="stylesheet" />
+        <link rel="stylesheet" href="static/styles.css" type="text/css" media="screen" />
+    </head>
+    <body>
+        <p id="status">Connection status will go here</p>
+        <p id="transcript"></p>
+        <div>
+            <video id="mainVideo"
+                   controls
+                   width="100%">
+                <source src="/video" type="video/webm">
+            </video>
+        </div>
+        <!-- <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script> -->
+        <script src="static/demo.js"></script>
+        <script src="static/service-worker.js"></script>
+
+
+    </body>
+</html>

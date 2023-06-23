@@ -6,13 +6,46 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from typing import Dict, Callable
 # from sentimiento import analysis
-from sentiment import analysis
+from sentiment import SentimentAnalyzer
 from transformers import pipeline
 from fastapi.staticfiles import StaticFiles
 from typing import BinaryIO
 from fastapi import HTTPException, status
+import numpy as np
+import torch
+import torchaudio
 
 import os
+from io import BytesIO
+
+audio_transcriber = pipeline(model="openai/whisper-base")
+
+sentiment = SentimentAnalyzer()
+#
+# Install the assemblyai package by executing the command `pip3 install assemblyai` (macOS) or `pip install assemblyai` (Windows).
+
+# Import the AssemblyAI module
+import assemblyai as aai
+
+# Your API token is already set here
+aai.settings.api_key = "442b167280a148d48115314db48247d2"
+
+# Create a transcriber object.
+transcriber = aai.Transcriber()
+
+# If you have a local audio file, you can transcribe it using the code below.
+# Make sure to replace the filename with the path to your local audio file.
+# Alternatively, if you have a URL to an audio file, you can transcribe it with the following code.
+# Uncomment the line below and replace the URL with the link to your audio file.
+# transcript = transcriber.transcribe("https://storage.googleapis.com/aai-web-samples/espn-bears.m4a")
+
+# After the transcription is complete, the text is printed out to the console.
+
+sentiment_data = {
+    "positive": 0,
+    "negative": 0,
+    "score": 0
+}
 
 
 load_dotenv()
@@ -25,15 +58,23 @@ templates = Jinja2Templates(directory="templates")
 
 app.mount('/static', StaticFiles(directory="static"), name="static")
 
+
+      # sentimentData['score'] += (label === 'POSITIVE' ? 1 : -1 * NEG_MULTIPLIER) * score
+      # console.log(sentimentData)
+      # isForward = sentimentData.score < 0
+      # // document.querySelector('#transcript').textContent += ' ' + received
+      # MULTIPLIER = Math.max(Math.min(
+      #   Math.log(Math.abs(sentimentData.score) + 4)/Math.log(4), 3), 1) // log(score) in base 4
+
 async def process_audio(fast_socket: WebSocket):
     async def get_transcript(data: Dict) -> None:
+        global sentiment_data
         if 'channel' in data:
             transcript = data['channel']['alternatives'][0]['transcript']
 
             if transcript:
-                await fast_socket.send_text(json.dumps({"transcript": transcript,
-                                                        "analysis": analysis(transcript)
-                                                        }))
+                result = sentiment.analysis(transcript)
+                await fast_socket.send_text(json.dumps({"transcript": transcript, "analysis": result.score}))
 
     deepgram_socket = await connect_to_deepgram(get_transcript)
 
@@ -52,6 +93,10 @@ async def connect_to_deepgram(transcript_received_handler: Callable[[Dict], None
 @app.get("/", response_class=HTMLResponse)
 def get(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/demo", response_class=HTMLResponse)
+def get(request: Request):
+    return templates.TemplateResponse("demo.html", {"request": request})
 
 
 def send_bytes_range_requests(file_obj: BinaryIO, start: int, end: int, chunk_size: int = 10_000):
@@ -124,8 +169,30 @@ def get_video(request: Request):
     return range_requests_response(
         request, file_path="static/out1.webm", content_type="video/webm")
 
+@app.websocket("/demo-listen")
+async def websocket_endpoint(websocket: WebSocket):
+    """Sends data down to the display server so it can update the speed of the video back and forth as well as the amount of connected clients
+    """
+    await websocket.accept()
+
+    # We can try to only send the latest sentiment data
+    try:
+        while True:
+            received = await websocket.receive_text()
+            # print(received)
+            await websocket.send_text(json.dumps({"score": sentiment.score}))
+    except Exception as e:
+        raise Exception(f'Problem with the demo listen socket: {e}')
+    finally:
+        await websocket.close()
+
+
+connected_clients = []
+
 @app.websocket("/listen")
 async def websocket_endpoint(websocket: WebSocket):
+    """Listens to the clients that provide mic input.
+    """
     await websocket.accept()
 
     try:

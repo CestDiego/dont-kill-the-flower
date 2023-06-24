@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from typing import Dict, Callable
+
 # from sentimiento import analysis
 from sentiment import SentimentAnalyzer
 from transformers import pipeline
@@ -40,66 +41,66 @@ transcriber = aai.Transcriber()
 # transcript = transcriber.transcribe("https://storage.googleapis.com/aai-web-samples/espn-bears.m4a")
 
 # After the transcription is complete, the text is printed out to the console.
-
-sentiment_data = {
-    "positive": 0,
-    "negative": 0,
-    "score": 0
-}
+#
 
 
 load_dotenv()
 
 app = FastAPI()
 
-dg_client = Deepgram(os.getenv('DEEPGRAM_API_KEY'))
+dg_client = Deepgram(os.getenv("DEEPGRAM_API_KEY"))
 
 templates = Jinja2Templates(directory="templates")
 
-app.mount('/static', StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-      # sentimentData['score'] += (label === 'POSITIVE' ? 1 : -1 * NEG_MULTIPLIER) * score
-      # console.log(sentimentData)
-      # isForward = sentimentData.score < 0
-      # // document.querySelector('#transcript').textContent += ' ' + received
-      # MULTIPLIER = Math.max(Math.min(
-      #   Math.log(Math.abs(sentimentData.score) + 4)/Math.log(4), 3), 1) // log(score) in base 4
 
 async def process_audio(fast_socket: WebSocket):
     async def get_transcript(data: Dict) -> None:
-        global sentiment_data
-        if 'channel' in data:
-            transcript = data['channel']['alternatives'][0]['transcript']
+        if "channel" in data:
+            transcript = data["channel"]["alternatives"][0]["transcript"]
 
             if transcript:
                 result = sentiment.analysis(transcript)
-                await fast_socket.send_text(json.dumps({"transcript": transcript, "analysis": result.score}))
+                await fast_socket.send_text(
+                    json.dumps({"transcript": transcript, "analysis": result.score})
+                )
 
     deepgram_socket = await connect_to_deepgram(get_transcript)
 
     return deepgram_socket
 
+
 async def connect_to_deepgram(transcript_received_handler: Callable[[Dict], None]):
     try:
-        socket = await dg_client.transcription.live({'punctuate': True, 'interim_results': False})
-        socket.registerHandler(socket.event.CLOSE, lambda c: print(f'Connection closed with code {c}.'))
-        socket.registerHandler(socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler)
+        socket = await dg_client.transcription.live(
+            {"punctuate": True, "interim_results": False}
+        )
+        socket.registerHandler(
+            socket.event.CLOSE, lambda c: print(f"Connection closed with code {c}.")
+        )
+        socket.registerHandler(
+            socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler
+        )
 
         return socket
     except Exception as e:
-        raise Exception(f'Could not open socket: {e}')
+        raise Exception(f"Could not open socket: {e}")
+
 
 @app.get("/", response_class=HTMLResponse)
 def get(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 @app.get("/demo", response_class=HTMLResponse)
 def get(request: Request):
     return templates.TemplateResponse("demo.html", {"request": request})
 
 
-def send_bytes_range_requests(file_obj: BinaryIO, start: int, end: int, chunk_size: int = 10_000):
+def send_bytes_range_requests(
+    file_obj: BinaryIO, start: int, end: int, chunk_size: int = 10_000
+):
     """Send a file in chunks using Range Requests specification RFC7233
 
     `start` and `end` parameters are inclusive due to specification
@@ -167,7 +168,12 @@ def range_requests_response(request: Request, file_path: str, content_type: str)
 @app.get("/video")
 def get_video(request: Request):
     return range_requests_response(
-        request, file_path="static/out1.webm", content_type="video/webm")
+        request, file_path="static/out1.webm", content_type="video/webm"
+    )
+
+
+connected_clients = []
+
 
 @app.websocket("/demo-listen")
 async def websocket_endpoint(websocket: WebSocket):
@@ -180,20 +186,22 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             received = await websocket.receive_text()
             # print(received)
-            await websocket.send_text(json.dumps({"score": sentiment.score}))
+            await websocket.send_json(
+                {"score": sentiment.score, "connectedClients": len(connected_clients)}
+            )
     except Exception as e:
-        raise Exception(f'Problem with the demo listen socket: {e}')
+        raise Exception(f"Problem with the demo listen socket: {e}")
     finally:
         await websocket.close()
 
-
-connected_clients = []
 
 @app.websocket("/listen")
 async def websocket_endpoint(websocket: WebSocket):
     """Listens to the clients that provide mic input.
     """
     await websocket.accept()
+
+    connected_clients.append(websocket)
 
     try:
         deepgram_socket = await process_audio(websocket)
@@ -202,6 +210,7 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_bytes()
             deepgram_socket.send(data)
     except Exception as e:
-        raise Exception(f'Could not process audio: {e}')
+        raise Exception(f"Could not process audio: {e}")
     finally:
+        connected_clients.remove(websocket)
         await websocket.close()

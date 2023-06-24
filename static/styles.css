@@ -18,3 +18,10 @@ video::-webkit-media-controls-enclosure {
 	z-index: 100;
 	display:block;
 }
+
+.overlay {
+    position: absolute;
+    z-index: 100;
+    padding: 10px;
+    background: #fafafa;
+}

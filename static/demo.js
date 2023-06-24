@@ -50,6 +50,8 @@ videoPlayer.onclick = (el) => {
   videoPlayer.controls = false
 }
 
+const connectedClientsDiv = document.getElementById('connected-clients');
+
 const socket = new WebSocket('ws://localhost:8000/demo-listen')
 const STEP_TIME = 1/24
 let MULTIPLIER = 1
@@ -70,8 +72,9 @@ socket.onopen = () => {
 }
 
 socket.onmessage = (message) => {
-  const { score } = JSON.parse(message.data)
-  isForward = score < 0
+  const { score, connectedClients } = JSON.parse(message.data)
+  isForward = score < 0;
+  connectedClientsDiv.textContent = `Connected Clients: ${connectedClients}`;
 }
 
 window.getNextFrameFunction = () => {
@@ -93,9 +96,13 @@ window.runny = () => {
   const nextFrame = window.getNextFrameFunction();
   const interval = window.setInterval(() => {
     videoPlayer.currentTime = nextFrame();
-  socket.send(JSON.stringify({data: "test"}))
+    socket.send(JSON.stringify({ eventName: "new-frame" }))
   }, 1000/24)
   window.mainInterval = interval
+}
+
+window.resetDemo = () => {
+  socket.send(JSON.stringify({ eventName: "reset" }))
 }
 
 window.runny();

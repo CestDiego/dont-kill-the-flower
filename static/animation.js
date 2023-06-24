@@ -1,8 +1,8 @@
 import * as THREE from 'three'
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
 
 window.three = THREE
-
-window.addEventListener('load', init);
 
 function init() {
 
@@ -32,6 +32,8 @@ function init() {
   animate();
 
 
-  new THREE.TextGeometry( 'Something', parameters );
+  // new THREE.TextGeometry( 'Something', parameters );
 
 }
+
+window.addEventListener('load', init);

@@ -32,7 +32,9 @@ var CURRENT_CACHES = {
 self.addEventListener('install', function(event) {
   var urlsToPrefetch = [
     // The videos are stored remotely with CORS enabled.
-    '/video',
+    // '/static/out1.webm',
+    // '/video',
+    'https://do-not-kill-flower-bucket.s3.us-east-2.amazonaws.com/out1.webm',
   ];
 
   // All of these logging statements should be visible via the "Inspect" interface

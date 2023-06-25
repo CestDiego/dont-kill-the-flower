@@ -22,11 +22,82 @@ function waitUntilInstalled(registration) {
   });
 }
 
+function videoData() {
+  const connectedClientsDiv = document.getElementById('connected-clients');
+  const scoreDiv = document.getElementById('score');
+  const socket = new WebSocket('ws://localhost:8000/demo-listen')
+  const STEP_TIME = 1/24
+  let MULTIPLIER = 1
+  // const FULL_BLOOM_TIMESTAMP=55
+  // const FULL_DEATH_TIMESTAMP=86
+  const FULL_BLOOM_TIMESTAMP=16
+  const FULL_DEATH_TIMESTAMP=86
+  let isForward = false
+
+  document.querySelector('video').onloadedmetadata = function() {
+    var fileName = this.currentSrc.replace(/^.*[\\\/]/, '');
+    console.log("Video source:", fileName);
+  };
+
+  const videoPlayer = document.getElementById('mainVideo')
+  videoPlayer.onclick = (el) => {
+    videoPlayer.requestFullscreen()
+    videoPlayer.controls = false
+  }
+
+  socket.onopen = () => {
+    document.querySelector('#status').textContent = 'Connected'
+    console.log({
+      event: 'onopen'
+    })
+    socket.send(JSON.stringify({data: "test"}))
+  }
+
+  socket.onmessage = (message) => {
+    const { score, connectedClients } = JSON.parse(message.data)
+    isForward = score < 0;
+    scoreDiv.textContent = `Score is ${score}`
+    connectedClientsDiv.textContent = `Connected Clients: ${connectedClients}`;
+  }
+
+  window.getNextFrameFunction = () => {
+    let frame = 0;
+    return () => {
+      // Play normally until FULL_BLOOM_TIMESTAMP
+      if (frame < FULL_BLOOM_TIMESTAMP) {
+        frame = frame + STEP_TIME
+        return frame
+      }
+      frame = isForward
+        ? Math.min(frame + (STEP_TIME * MULTIPLIER), FULL_DEATH_TIMESTAMP)
+        : Math.max(frame - (STEP_TIME * MULTIPLIER), FULL_BLOOM_TIMESTAMP);
+      return frame;
+    }
+  }
+
+  window.runny = () => {
+    const nextFrame = window.getNextFrameFunction();
+    const interval = window.setInterval(() => {
+      videoPlayer.currentTime = nextFrame();
+      socket.send(JSON.stringify({ eventName: "new-frame" }))
+    }, 1000/24)
+    window.mainInterval = interval
+  }
+
+  window.resetDemo = () => {
+    socket.send(JSON.stringify({ eventName: "reset" }))
+  }
+
+  window.runny();
+
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/service-worker.js', {
     scope: '/static/'
   })
     .then(waitUntilInstalled)
+    .then(videoData)
     // .then(showFilesList)
     .catch(function(error) {
       // Something went wrong during registration. The service-worker.js file
@@ -38,71 +109,3 @@ if ('serviceWorker' in navigator) {
   console.error(`Service workers are not supported in the current browser.
 http://www.chromium.org/blink/serviceworker/service-worker-faq`)
 }
-
-document.querySelector('video').onloadedmetadata = function() {
-  var fileName = this.currentSrc.replace(/^.*[\\\/]/, '');
-  console.log("Video source:", fileName);
-};
-
-const videoPlayer = document.getElementById('mainVideo')
-videoPlayer.onclick = (el) => {
-  videoPlayer.requestFullscreen()
-  videoPlayer.controls = false
-}
-
-const connectedClientsDiv = document.getElementById('connected-clients');
-
-const socket = new WebSocket('ws://localhost:8000/demo-listen')
-const STEP_TIME = 1/24
-let MULTIPLIER = 1
-// const FULL_BLOOM_TIMESTAMP=55
-// const FULL_DEATH_TIMESTAMP=86
-const FULL_BLOOM_TIMESTAMP=16
-const FULL_DEATH_TIMESTAMP=86
-let isForward = false
-
-
-
-socket.onopen = () => {
-  document.querySelector('#status').textContent = 'Connected'
-  console.log({
-    event: 'onopen'
-  })
-  socket.send(JSON.stringify({data: "test"}))
-}
-
-socket.onmessage = (message) => {
-  const { score, connectedClients } = JSON.parse(message.data)
-  isForward = score < 0;
-  connectedClientsDiv.textContent = `Connected Clients: ${connectedClients}`;
-}
-
-window.getNextFrameFunction = () => {
-  let frame = 0;
-  return () => {
-    // Play normally until FULL_BLOOM_TIMESTAMP
-    if (frame < FULL_BLOOM_TIMESTAMP) {
-      frame = frame + STEP_TIME
-      return frame
-    }
-    frame = isForward
-      ? Math.min(frame + (STEP_TIME * MULTIPLIER), FULL_DEATH_TIMESTAMP)
-      : Math.max(frame - (STEP_TIME * MULTIPLIER), FULL_BLOOM_TIMESTAMP);
-    return frame;
-  }
-}
-
-window.runny = () => {
-  const nextFrame = window.getNextFrameFunction();
-  const interval = window.setInterval(() => {
-    videoPlayer.currentTime = nextFrame();
-    socket.send(JSON.stringify({ eventName: "new-frame" }))
-  }, 1000/24)
-  window.mainInterval = interval
-}
-
-window.resetDemo = () => {
-  socket.send(JSON.stringify({ eventName: "reset" }))
-}
-
-window.runny();

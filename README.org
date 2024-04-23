@@ -1,4 +1,4 @@
-#+title: Tell Me About It
+#+title: Don't kill the flower
 
 * Objective
 - Output real time sentiment analysis data on microphone input.
